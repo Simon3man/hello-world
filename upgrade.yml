@@ -1,0 +1,967 @@
+---
+# ============================================================
+# Create Two Moodle Servers
+# ============================================================
+
+  - name: Provision EC2 Instance for first moodle webserver
+    hosts: localhost
+    connection: local
+    gather_facts: False
+    tags: provisioning
+    # Necessary Variables for creating/provisioning the EC2 Instance
+    vars:
+      instance_type: t2.micro
+      security_group: launch-group1 # the security group name 
+      image: ami-ba602bc2 # This is an AMI i created myself
+      keypair: main-instance # the key that i create before in ansible.sh
+      region: us-west-2 # Change the region as yours
+      count: 1
+
+    # Task that will be used to Launch/Create an EC2 Instance
+    tasks:
+
+      - name: Create a security group
+        local_action: 
+          module: ec2_group
+          name: "{{ security_group }}"
+          description: Security Group for webserver Servers
+          region: "{{ region }}"
+          rules:
+            - proto: tcp
+              from_port: 22
+              to_port: 22
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 80
+              to_port: 80
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 443
+              to_port: 443
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 3306
+              to_port: 3306
+              cidr_ip: 0.0.0.0/0
+          rules_egress:
+            - proto: all
+              cidr_ip: 0.0.0.0/0
+        register: basic_firewall
+      
+
+      - name: Launch the new EC2 Instance
+        local_action: ec2 
+                      group={{ security_group }} 
+                      instance_type={{ instance_type}} 
+                      image={{ image }} 
+                      wait=true 
+                      region={{ region }} 
+                      keypair={{ keypair }}
+                      count={{count}}
+        register: ec2
+
+      - name: Add all instance public IPs to host group
+        add_host: hostname={{ item.public_ip }} groups=moodle1_hosts
+        loop: "{{ ec2.instances }}"
+
+      - name: Wait for SSH to come up
+        local_action: wait_for 
+                      host={{ item.public_ip }} 
+                      port=22 
+                      state=started
+        with_items: "{{ ec2.instances }}"
+
+      - name: Add tag to Instance(s)
+        local_action: ec2_tag resource={{ item.id }} region={{ region }} state=present
+        with_items: "{{ ec2.instances }}"
+        args:
+          tags:
+            Name: Moodle_server1
+
+
+
+  - name: Provision EC2 Instance for another moodle webserver
+    hosts: localhost
+    connection: local
+    gather_facts: False
+    tags: provisioning
+    # Necessary Variables for creating/provisioning the EC2 Instance
+    vars:
+      instance_type: t2.micro
+      security_group: launch-group1 # the security group name 
+      image: ami-ba602bc2 # This is an AMI i created myself
+      keypair: main-instance # the key that i create before in ansible.sh
+      region: us-west-2 # Change the region as yours
+      count: 1
+
+    # Task that will be used to Launch/Create an EC2 Instance
+    tasks:
+
+      - name: Create a security group
+        local_action: 
+          module: ec2_group
+          name: "{{ security_group }}"
+          description: Security Group for webserver Servers
+          region: "{{ region }}"
+          rules:
+            - proto: tcp
+              from_port: 22
+              to_port: 22
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 80
+              to_port: 80
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 443
+              to_port: 443
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 3306
+              to_port: 3306
+              cidr_ip: 0.0.0.0/0
+          rules_egress:
+            - proto: all
+              cidr_ip: 0.0.0.0/0
+        register: basic_firewall
+      
+
+      - name: Launch the new EC2 Instance
+        local_action: ec2 
+                      group={{ security_group }} 
+                      instance_type={{ instance_type}} 
+                      image={{ image }} 
+                      wait=true 
+                      region={{ region }} 
+                      keypair={{ keypair }}
+                      count={{count}}
+        register: ec2
+
+      - name: Add all instance public IPs to host group
+        add_host: hostname={{ item.public_ip }} groups=moodle2_hosts
+        loop: "{{ ec2.instances }}"
+
+      - name: Wait for SSH to come up
+        local_action: wait_for 
+                      host={{ item.public_ip }} 
+                      port=22 
+                      state=started
+        with_items: "{{ ec2.instances }}"
+
+      - name: Add tag to Instance(s)
+        local_action: ec2_tag resource={{ item.id }} region={{ region }} state=present
+        with_items: "{{ ec2.instances }}"
+        args:
+          tags:
+            Name: Moodle_server2
+
+
+# =======================================================================
+# Create nginx server
+# =======================================================================
+
+  - name: Provision an EC2 Instance for nginx webserver
+    hosts: localhost
+    connection: local
+    gather_facts: False
+    tags: provisioning
+    # Necessary Variables for creating/provisioning the EC2 Instance
+    vars:
+      instance_type: t2.micro
+      security_group: launch-group1 # the security group name 
+      image: ami-ba602bc2 # This is an AMI i created myself
+      keypair: main-instance # the key that i create before in ansible.sh
+      region: us-west-2 # Change the region as yours
+      count: 1
+
+    # Task that will be used to Launch/Create an EC2 Instance
+    tasks:
+
+      - name: Create a security group
+        local_action: 
+          module: ec2_group
+          name: "{{ security_group }}"
+          description: Security Group for webserver Servers
+          region: "{{ region }}"
+          rules:
+            - proto: tcp
+              from_port: 22
+              to_port: 22
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 80
+              to_port: 80
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 443
+              to_port: 443
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 3306
+              to_port: 3306
+              cidr_ip: 0.0.0.0/0              
+          rules_egress:
+            - proto: all
+              cidr_ip: 0.0.0.0/0
+        register: basic_firewall
+      
+
+      - name: Launch the new EC2 Instance
+        local_action: ec2 
+                      group={{ security_group }} 
+                      instance_type={{ instance_type}} 
+                      image={{ image }} 
+                      wait=true 
+                      region={{ region }} 
+                      keypair={{ keypair }}
+                      count={{count}}
+        register: ec2
+
+      - name: Add all instance public IPs to host group
+        add_host: hostname={{ item.public_ip }} groups=nginx_hosts
+        loop: "{{ ec2.instances }}" 
+
+      - name: Wait for SSH to come up
+        local_action: wait_for 
+                      host={{ item.public_ip }} 
+                      port=22 
+                      state=started
+        with_items: "{{ ec2.instances }}"
+
+      - name: Add tag to Instance(s)
+        local_action: ec2_tag resource={{ item.id }} region={{ region }} state=present
+        with_items: "{{ ec2.instances }}"
+        args:
+          tags:
+            Name: Nginx_server
+
+
+# ================================================================
+# Create database server
+# ================================================================
+
+  - name: Provision an EC2 Instance for database webserver
+    hosts: localhost
+    connection: local
+    gather_facts: False
+    tags: provisioning
+    # Necessary Variables for creating/provisioning the EC2 Instance
+    vars:
+      instance_type: t2.micro
+      security_group: launch-group1 # the security group name 
+      image: ami-ba602bc2 # This is an AMI i created myself
+      keypair: main-instance # the key that i create before in ansible.sh
+      region: us-west-2 # Change the region as yours
+      count: 1
+
+    # Task that will be used to Launch/Create an EC2 Instance
+    tasks:
+
+      - name: Create a security group
+        local_action: 
+          module: ec2_group
+          name: "{{ security_group }}"
+          description: Security Group for webserver Servers
+          region: "{{ region }}"
+          rules:
+            - proto: tcp
+              from_port: 22
+              to_port: 22
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 80
+              to_port: 80
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 443
+              to_port: 443
+              cidr_ip: 0.0.0.0/0
+            - proto: tcp
+              from_port: 3306
+              to_port: 3306
+              cidr_ip: 0.0.0.0/0             
+          rules_egress:
+            - proto: all
+              cidr_ip: 0.0.0.0/0
+        register: basic_firewall
+      
+
+      - name: Launch the new EC2 Instance
+        local_action: ec2 
+                      group={{ security_group }} 
+                      instance_type={{ instance_type}} 
+                      image={{ image }} 
+                      wait=true 
+                      region={{ region }} 
+                      keypair={{ keypair }}
+                      count={{count}}
+        register: ec2
+
+      - name: Add all instance public IPs to host group
+        add_host: hostname={{ item.public_ip }} groups=database_hosts
+        loop: "{{ ec2.instances }}"
+
+      - name: Wait for SSH to come up
+        local_action: wait_for 
+                      host={{ item.public_ip }} 
+                      port=22 
+                      state=started
+        with_items: "{{ ec2.instances }}"
+
+      - name: Add tag to Instance(s)
+        local_action: ec2_tag resource={{ item.id }} region={{ region }} state=present
+        with_items: "{{ ec2.instances }}"
+        args:
+          tags:
+            Name: database_server
+
+
+
+# ----------------------------------------------------------------------
+# Configuration of Database Server
+# -----------------------------------------------------------------------
+
+  - hosts: database_hosts
+    name: Install the database via ansible
+    user: ubuntu
+    gather_facts: False
+    become: yes
+    become_method: sudo
+    pre_tasks:
+      - name: Install python for Ansible
+        raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+        register: output
+        changed_when: output.stdout != ""
+      - setup: # aka gather_facts
+    
+    tasks:
+        
+      - name: Enable UFW
+        ufw: 
+         direction: incoming
+         policy: deny
+         state: enabled
+
+      - name: UFW allow port 22
+        ufw:
+         rule: allow
+         port: 22
+         
+      - name: UFW allow port 80
+        ufw:
+         rule: allow
+         port: 80
+         
+      - name: UFW allow port 3306
+        ufw:
+         rule: allow
+         port: 3306
+
+      - name: Get the server IP
+        shell: |
+            database_ip=`curl ifconfig.co`
+            
+      - name: Install Mysql Server
+        apt:
+          name: mysql-server
+          state: present
+          update_cache: yes
+         
+      - name: Install Mysql python module
+        apt:
+          name: python-mysqldb
+          state: present
+
+      - name: Start Mysql Server
+        sudo: yes
+        service: 
+          name: mysql
+          state: started
+          enabled: true
+
+
+      - name: change the mysqlDatabase configuration file
+        blockinfile: 
+          path: /etc/mysql/mysql.conf.d/mysqld.cnf
+          block: |
+            # defult_storage_engine = innodb
+            # innodb_file_per_table = 1
+            # innodb_file_format = Barracuda
+
+      - name: change some lines in mysql database file
+        lineinfile: backup=yes state=present dest=/etc/mysql/mysql.conf.d/mysqld.cnf
+            state=absent
+            regexp='^bind'
+        tags:
+            - delete bind
+
+      - name: Accessing and Logging In MySQL
+        shell: |
+            sudo -S mysql -u root -padmin <<EOF
+            CREATE DATABASE moodle DEFAULT CHARACTER SET utf8 COLLATE utf8_unicode_ci; 
+            create user 'moodler'@'%' IDENTIFIED BY 'moodlerpassword'; 
+            GRANT SELECT,INSERT,UPDATE,DELETE,CREATE,CREATE TEMPORARY TABLES,DROP,INDEX,ALTER ON moodle.* TO 'moodler'@'%' IDENTIFIED BY 'moodlerpassword';
+            exit
+            EOF
+    
+      - name: restart mysql
+        service: 
+          name: mysql
+          state: restarted
+        
+
+            
+            
+      - name: Install CronJob
+        shell: |
+            get_url https://raw.githubusercontent.com/kei-k/2018_Group11/master/Assignment2/dbCronInstall.sh?token=AnXGBYzHD6Q4vqKgakXvtc8keuiawjCiks5bv-kUwA%3D%3D > dbChronInstall.sh
+            sudo bash ./dbChronInstall.sh
+           
+        
+        
+
+
+
+# =============================================================
+# Configure Moodle Server 1
+# ==============================================================
+
+            
+  - hosts: moodle1_hosts
+    name: Install the moodle via ansible
+    user: ubuntu
+    gather_facts: False
+    become: yes
+    become_method: sudo
+    pre_tasks:
+      - name: Install python for Ansible
+        raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+        register: output
+        changed_when: output.stdout != ""
+      - setup: # aka gather_facts
+    
+    tasks:
+        
+      - name: Enable UFW
+        ufw: 
+         direction: incoming
+         policy: deny
+         state: enabled
+
+      - name: UFW allow port 22
+        ufw:
+         rule: allow
+         port: 22
+         
+      - name: UFW allow port 80
+        ufw:
+         rule: allow
+         port: 80
+         
+      - name: UFW allow port 3306
+        ufw:
+         rule: allow
+         port: 3306
+
+      - name: Get the server IP
+        shell: |
+            server1_ip=`curl ifconfig.co`
+
+      - name: Install Apache2
+        apt:
+             name: "{{item}}"
+             state: present
+        with_items: 
+          - apache2
+          - apache2-doc
+          - apache2-utils         
+
+      - name: Installing php
+        apt: 
+          name: "{{item}}" 
+          state: present
+        with_items:
+        - php
+        - libapache2-mod-php
+        - php-mcrypt
+        - php-mysql
+
+      - name: Install common PHP Extensions
+        apt: 
+          name: "{{item}}"
+          state: present
+        with_items:
+          - aspell
+          - graphviz
+          - php7.0-curl
+          - php7.0-gd
+          - php7.0-intl
+          - php7.0-ldap
+          - php7.0-mysql
+          - php7.0-pspell
+          - php7.0-xml
+          - php7.0-xmlrpc
+          - php7.0-zip
+        notify:
+          - restart apache2
+      
+      - name: Download and extract moodle
+        unarchive:
+          src: https://download.moodle.org/stable31/moodle-3.1.8.tgz
+          dest: /var/www/html
+          remote_src: yes
+          
+      - name: create a moodledata folder and change the ownership
+        file:
+          path: /var/www/moodledata
+          state: directory
+          owner: www-data
+          group: www-data
+          mode: 0777
+
+      - name: change the permissions for /var/www/html/
+        file:
+          path: /var/www/html/moodle
+          mode: 0777
+          recurse: yes
+
+      - name: change permission for /usr/bin/php
+        file: 
+          path: /usr/bin/php
+          mode: 0777
+        
+      - name: change permission for /var/www/html/moodle/admin/cli/install.php
+        file: 
+          path: /var/www/html/moodle/admin/cli/install.php
+          mode: 0777  
+     
+      - name: configuration the moodle website
+        shell: |
+            ip=`curl ifconfig.co`
+            sudo -u www-data /usr/bin/php /var/www/html/moodle/admin/cli/install.php --chmod=777 --lang=en --wwwroot=http://$ip/moodle --dataroot=/var/www/moodledata --dbtype=mysqli \ 
+            --dbhost={{item}} --dbname=moodle --dbuser=moodler --dbpass=moodlerpassword --dbport=3306 --prefix=mdl_ --fullname=Group11-2018 --shortname=G11 --adminuser=admin --adminpass=password --non-interactive --allow-unstable --agree-license
+        with_inventory_hostnames:
+          - database_hosts
+
+          
+      - name: print stdout
+        debug:
+          msg: ""
+          
+    handlers:
+    - name: restart apache2
+      service: 
+        name: apache2
+        state: restarted
+
+# ==================================================================
+# Configure Moodle Server 2
+# ==================================================================
+
+  - hosts: moodle2_hosts
+    name: Install the moodle via ansible
+    user: ubuntu
+    gather_facts: False
+    become: yes
+    become_method: sudo
+    pre_tasks:
+      - name: Install python for Ansible
+        raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+        register: output
+        changed_when: output.stdout != ""
+      - setup: # aka gather_facts
+    
+    tasks:
+        
+      - name: Enable UFW
+        ufw: 
+         direction: incoming
+         policy: deny
+         state: enabled
+
+      - name: UFW allow port 22
+        ufw:
+         rule: allow
+         port: 22
+         
+      - name: UFW allow port 80
+        ufw:
+         rule: allow
+         port: 80
+         
+      - name: UFW allow port 3306
+        ufw:
+         rule: allow
+         port: 3306
+
+      - name: Get the server IP
+        shell: |
+            server2_ip=`curl ifconfig.co`
+
+      - name: Install Apache2
+        apt:
+             name: "{{item}}"
+             state: present
+        with_items: 
+          - apache2
+          - apache2-doc
+          - apache2-utils         
+
+      - name: Installing php
+        apt: 
+          name: "{{item}}" 
+          state: present
+        with_items:
+        - php
+        - libapache2-mod-php
+        - php-mcrypt
+        - php-mysql
+
+      - name: Install common PHP Extensions
+        apt: 
+          name: "{{item}}"
+          state: present
+        with_items:
+          - aspell
+          - graphviz
+          - php7.0-curl
+          - php7.0-gd
+          - php7.0-intl
+          - php7.0-ldap
+          - php7.0-mysql
+          - php7.0-pspell
+          - php7.0-xml
+          - php7.0-xmlrpc
+          - php7.0-zip
+        notify:
+          - restart apache2
+      
+      - name: Download and extract moodle
+        unarchive:
+          src: https://download.moodle.org/stable31/moodle-3.1.8.tgz
+          dest: /var/www/html
+          remote_src: yes
+          
+      - name: create a moodledata folder and change the ownership
+        file:
+          path: /var/www/moodledata
+          state: directory
+          owner: www-data
+          group: www-data
+          mode: 0777
+
+      - name: change the permissions for /var/www/html/
+        file:
+          path: /var/www/html/moodle
+          mode: 0777
+          recurse: yes
+
+      - name: change permission for /usr/bin/php
+        file: 
+          path: /usr/bin/php
+          mode: 0777
+        
+      - name: change permission for /var/www/html/moodle/admin/cli/install.php
+        file: 
+          path: /var/www/html/moodle/admin/cli/install.php
+          mode: 0777  
+     
+      - name: configuration the moodle website
+        shell: |
+            ip=`curl ifconfig.co`
+            sudo -u www-data /usr/bin/php /var/www/html/moodle/admin/cli/install.php --chmod=777 --lang=en --wwwroot=http://$ip/moodle --dataroot=/var/www/moodledata --dbtype=mysqli \ 
+            --dbhost={{item}} --dbname=moodle --dbuser=moodler --dbpass=moodlerpassword --dbport=3306 --prefix=mdl2_ --fullname=Group11-2018 --shortname=G11 --adminuser=admin --adminpass=password --non-interactive --allow-unstable --agree-license
+        with_inventory_hostnames:
+          - database_hosts
+
+      # - name: Transfer file from ServerA to ServerB
+      #   synchronize:
+      #     src: /var/www/html/moodle/config.php
+      #     dest: /var/www/html/moodle/config.php
+      #   delegate_to: {{item}}
+      #   with_inventory_hostnames:
+      #     moodle1_hosts
+
+          
+      - name: print stdout
+        debug:
+          msg: ""
+          
+    handlers:
+    - name: restart apache2
+      service: 
+        name: apache2
+        state: restarted
+
+
+
+
+# =============================================================
+# nginx server configuration
+# =============================================================
+
+  - hosts: nginx_hosts
+    name: Install the nginx via ansible
+    user: ubuntu
+    gather_facts: False
+    become: yes
+    become_method: sudo
+    pre_tasks:
+      - name: Install python for Ansible
+        raw: test -e /usr/bin/python || (apt -y update && apt install -y python-minimal)
+        register: output
+        changed_when: output.stdout != ""
+      - setup: # aka gather_facts
+    
+    tasks:
+        
+      # - name: Enable UFW
+      #   ufw: 
+      #    direction: incoming
+      #    policy: deny
+      #    state: enabled
+
+      - name: Enable UFW
+        ufw: 
+         policy: allow
+         state: enabled      
+
+      - name: UFW allow port 22
+        ufw:
+         rule: allow
+         port: 22
+         
+      - name: UFW allow port 80
+        ufw:
+         rule: allow
+         port: 80
+         
+      - name: UFW allow port 3306
+        ufw:
+         rule: allow
+         port: 3306
+
+      - name: install the nginx
+        shell: |
+
+            sudo apt-get update -y
+            sudo apt-get install nginx -y
+
+
+            sudo ufw allow 'Nginx HTTP'
+
+            sudo sed -i '63i # server list that can use\nupstream myproject\n {\nserver {{item}} weight=1;\n' /etc/nginx/nginx.conf
+        with_inventory_hostnames:
+          - moodle1_hosts
+
+      - name: configuration to the nginx
+        shell: |
+            sudo sed -i '67i server {{item}} weight=1;\n' /etc/nginx/nginx.conf
+        with_inventory_hostnames:
+          - moodle2_hosts   
+
+      - name: configuration to the nginx continue
+        shell: |
+
+            sudo sed -i '68i }\nserver\n{\n# listener port\nlisten 80;\n# server name\n server_name {{item}};\nlocation / {\nindex index.html;\nroot html;\nproxy_pass http://myproject;\n}\n}\n' /etc/nginx/nginx.conf
+
+            cd /usr/sbin/
+            sudo ./nginx -s reload 
+        with_inventory_hostnames:
+          - nginx_hosts 
+          
+     
+
+# ============================================================================
+#
+# All Servers Installed. You can Now View moodle by following the nginx server IP (found on EC2 Instance Dashboard on AWS)
+#
+# ============================================================================  
+      
+      - name: All Servers have been created and Installed, You can have a test the version of moodle by typing the NginxIP/moodle through the 3 mins pause
+        pause: 
+          minutes: 5
+        
+      
+# ----------------------------------------------------------------------------
+# Disconnect and Start updating the first moodle server and then connect
+# ----------------------------------------------------------------------------
+
+  - hosts: moodle1_hosts
+    name: shatdown the moodle server 1 and upgrade it via ansible
+    user: ubuntu
+    gather_facts: False
+    become: yes
+    become_method: sudo
+    
+    
+    tasks:
+                
+      - name: Enable UFW
+        ufw: 
+         direction: incoming
+         policy: deny
+         state: enabled
+         
+      # Disable port 80 to disconnect the first moodle server
+         
+      - name: UFW disable port 80
+        ufw:
+         rule: allow
+         port: 80
+
+      - name: Get the server IP
+        shell: |
+            database_ip=`curl ifconfig.co`
+
+      - name: create a backup folder and change the ownership
+        file:
+          path: ~/backup
+          state: directory
+          mode: 0777
+
+      - name: Copy the config.php to backup
+        copy:
+          src: /var/www/html/moodle/config.php
+          dest: ~/backup/config.php
+          mode: 0777
+          remote_src: yes
+
+      - name: Delete the folder /var/www/html/moodle
+        file:
+          state: absent
+          path: /var/www/html/moodle
+
+      - name: Download and extract the new version of moodle
+        shell: |
+            curl -L https://download.moodle.org/download.php/direct/stable32/moodle-latest-32.tgz > moodle.tgz
+            sudo tar -xvzf moodle.tgz -C /var/www/html 
+
+      - name: Copy the config.php to new /var/www/html/moodle
+        copy:
+          src: ~/backup/config.php
+          dest: /var/www/html/moodle/config.php
+          mode: 0777
+          remote_src: yes
+
+      - name: create a moodledata folder and change the ownership
+        file:
+          path: /var/www/moodledata
+          state: directory
+          owner: www-data
+          group: www-data
+          mode: 0777
+
+      - name: change the permissions for /var/www/html/
+        file:
+          path: /var/www/html/moodle
+          mode: 0777
+          recurse: yes
+
+      - name: change permission for /usr/bin/php
+        file: 
+          path: /usr/bin/php
+          mode: 0777   
+      
+     
+# ----------------------------------------------------------------------------
+# One Server Currently Down.
+# ----------------------------------------------------------------------------
+      - name: Now one server is down and upgrading, but there the other one is still working, you can check by typing nginxIP/moodle to the webserver. 
+        pause: 
+          minutes: 3
+          
+          
+      - name: UFW allow port 80 to connect the server
+        ufw:
+         rule: allow
+         port: 80
+         
+
+        
+   
+         
+# ----------------------------------------------------------------------------
+# Disconnect and Start updating the second moodle server and then connect
+# ----------------------------------------------------------------------------
+
+  - hosts: moodle2_hosts
+    name: shatdown the moodle server 2 and upgrade it via ansible
+    user: ubuntu
+    gather_facts: False
+    become: yes
+    become_method: sudo
+    
+    
+    tasks:
+        
+      - name: Enable UFW
+        ufw: 
+         direction: incoming
+         policy: deny
+         state: enabled
+         
+      # Disable port 80 to disconnect the first moodle server
+         
+      - name: UFW disable port 80
+        ufw:
+         rule: allow
+         port: 80
+
+      - name: Get the server IP
+        shell: |
+            database_ip=`curl ifconfig.co`
+
+      - name: create a backup folder and change the ownership
+        file:
+          path: ~/backup
+          state: directory
+          mode: 0777
+
+      - name: Copy the config.php to backup
+        copy:
+          src: /var/www/html/moodle/config.php
+          dest: ~/backup/config.php
+          mode: 0777
+          remote_src: yes
+
+      - name: Delete the folder /var/www/html/moodle
+        file:
+          state: absent
+          path: /var/www/html/moodle
+
+      - name: Download and extract the new version of moodle
+        shell: |
+            curl -L https://download.moodle.org/download.php/direct/stable32/moodle-latest-32.tgz > moodle.tgz
+            sudo tar -xvzf moodle.tgz -C /var/www/html
+
+      - name: Copy the config.php to new /var/www/html/moodle
+        copy:
+          src: ~/backup/config.php
+          dest: /var/www/html/moodle/config.php
+          mode: 0777
+          remote_src: yes
+
+      - name: create a moodledata folder and change the ownership
+        file:
+          path: /var/www/moodledata
+          state: directory
+          owner: www-data
+          group: www-data
+          mode: 0777
+
+      - name: change the permissions for /var/www/html/
+        file:
+          path: /var/www/html/moodle
+          mode: 0777
+          recurse: yes
+
+      - name: change permission for /usr/bin/php
+        file: 
+          path: /usr/bin/php
+          mode: 0777
+
+      - name: UFW allow port 80
+        ufw:
+         rule: allow
+         port: 80
